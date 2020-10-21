@@ -81,7 +81,8 @@ mod build_bundled {
             .flag("-DSQLITE_USE_URI")
             .flag("-DHAVE_USLEEP=1")
             .flag("-D_POSIX_THREAD_SAFE_FUNCTIONS") // cross compile with MinGW
-            .warnings(false);
+            .warnings(false)
+            .static_crt(true);
 
         if cfg!(feature = "with-asan") {
             cfg.flag("-fsanitize=address");
