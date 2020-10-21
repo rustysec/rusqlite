@@ -151,6 +151,11 @@ mod build_bundled {
                 }
             }
         }
+        if let Ok(extras) = env::var("CCFLAGS") {
+            for extra in extras.split_whitespace() {
+                cfg.flag(extra);
+            }
+        }
         println!("cargo:rerun-if-env-changed=LIBSQLITE3_FLAGS");
 
         cfg.compile("libsqlite3.a");
