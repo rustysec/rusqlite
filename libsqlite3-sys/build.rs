@@ -95,6 +95,8 @@ mod build_bundled {
         // There may be other platforms that don't support `isnan`, they should be
         // tested for here.
         if cfg!(target_env = "msvc") {
+            cfg.static_crt(true);
+
             use cc::windows_registry::{find_vs_version, VsVers};
             let vs_has_nan = match find_vs_version() {
                 Ok(ver) => ver != VsVers::Vs12,
