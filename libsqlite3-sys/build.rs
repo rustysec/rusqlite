@@ -81,8 +81,7 @@ mod build_bundled {
             .flag("-DSQLITE_USE_URI")
             .flag("-DHAVE_USLEEP=1")
             .flag("-D_POSIX_THREAD_SAFE_FUNCTIONS") // cross compile with MinGW
-            .warnings(false)
-            .static_crt(true);
+            .warnings(false);
 
         if cfg!(feature = "with-asan") {
             cfg.flag("-fsanitize=address");
@@ -95,7 +94,7 @@ mod build_bundled {
         //
         // There may be other platforms that don't support `isnan`, they should be
         // tested for here.
-        if cfg!(target_env = "msvc") {
+        if env::var("CARGO_CFG_TARGET_ENV") == Ok("msvc".to_string()) {
             cfg.static_crt(true);
 
             use cc::windows_registry::{find_vs_version, VsVers};
@@ -109,7 +108,7 @@ mod build_bundled {
         } else {
             cfg.flag("-DHAVE_ISNAN");
         }
-        if cfg!(not(target_os = "windows")) {
+        if env::var("CARGO_CFG_TARGET_OS") != Ok("windows".to_string()) {
             cfg.flag("-DHAVE_LOCALTIME_R");
         }
         // Target wasm32-wasi can't compile the default VFS
