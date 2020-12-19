@@ -31,11 +31,14 @@ pub struct InnerConnection {
     pub free_rollback_hook: Option<unsafe fn(*mut ::std::os::raw::c_void)>,
     #[cfg(feature = "hooks")]
     pub free_update_hook: Option<unsafe fn(*mut ::std::os::raw::c_void)>,
+    #[cfg(feature = "hooks")]
+    pub progress_handler: Option<Box<dyn FnMut() -> bool + Send>>,
     owned: bool,
 }
 
 impl InnerConnection {
     #[allow(clippy::mutex_atomic)]
+    #[inline]
     pub unsafe fn new(db: *mut ffi::sqlite3, owned: bool) -> InnerConnection {
         InnerConnection {
             db,
@@ -46,6 +49,8 @@ impl InnerConnection {
             free_rollback_hook: None,
             #[cfg(feature = "hooks")]
             free_update_hook: None,
+            #[cfg(feature = "hooks")]
+            progress_handler: None,
             owned,
         }
     }
@@ -121,14 +126,17 @@ impl InnerConnection {
         }
     }
 
+    #[inline]
     pub fn db(&self) -> *mut ffi::sqlite3 {
         self.db
     }
 
+    #[inline]
     pub fn decode_result(&mut self, code: c_int) -> Result<()> {
         unsafe { InnerConnection::decode_result_raw(self.db(), code) }
     }
 
+    #[inline]
     unsafe fn decode_result_raw(db: *mut ffi::sqlite3, code: c_int) -> Result<()> {
         if code == ffi::SQLITE_OK {
             Ok(())
@@ -165,12 +173,14 @@ impl InnerConnection {
         }
     }
 
+    #[inline]
     pub fn get_interrupt_handle(&self) -> InterruptHandle {
         InterruptHandle {
             db_lock: Arc::clone(&self.interrupt_lock),
         }
     }
 
+    #[inline]
     #[cfg(feature = "load_extension")]
     pub fn enable_load_extension(&mut self, onoff: c_int) -> Result<()> {
         let r = unsafe { ffi::sqlite3_enable_load_extension(self.db, onoff) };
@@ -203,6 +213,7 @@ impl InnerConnection {
         }
     }
 
+    #[inline]
     pub fn last_insert_rowid(&self) -> i64 {
         unsafe { ffi::sqlite3_last_insert_rowid(self.db()) }
     }
@@ -262,10 +273,12 @@ impl InnerConnection {
         }))
     }
 
+    #[inline]
     pub fn changes(&mut self) -> usize {
         unsafe { ffi::sqlite3_changes(self.db()) as usize }
     }
 
+    #[inline]
     pub fn is_autocommit(&self) -> bool {
         unsafe { ffi::sqlite3_get_autocommit(self.db()) != 0 }
     }
@@ -286,11 +299,13 @@ impl InnerConnection {
     }
 
     #[cfg(not(feature = "hooks"))]
+    #[inline]
     fn remove_hooks(&mut self) {}
 }
 
 impl Drop for InnerConnection {
     #[allow(unused_must_use)]
+    #[inline]
     fn drop(&mut self) {
         use std::thread::panicking;
 

@@ -1,4 +1,4 @@
-//! `ToSql` and `FromSql` implementation for [`time::OffsetDateTime`].
+//! [`ToSql`] and [`FromSql`] implementation for [`time::OffsetDateTime`].
 use crate::types::{FromSql, FromSqlError, FromSqlResult, ToSql, ToSqlOutput, ValueRef};
 use crate::Result;
 use time::{OffsetDateTime, PrimitiveDateTime, UtcOffset};
@@ -8,6 +8,7 @@ const SQLITE_DATETIME_FMT: &str = "%Y-%m-%dT%H:%M:%S.%NZ";
 const SQLITE_DATETIME_FMT_LEGACY: &str = "%Y-%m-%d %H:%M:%S:%N %z";
 
 impl ToSql for OffsetDateTime {
+    #[inline]
     fn to_sql(&self) -> Result<ToSqlOutput<'_>> {
         let time_string = self.to_offset(UtcOffset::UTC).format(SQLITE_DATETIME_FMT);
         Ok(ToSqlOutput::from(time_string))
@@ -32,20 +33,19 @@ impl FromSql for OffsetDateTime {
 
 #[cfg(test)]
 mod test {
-    use crate::{Connection, Result, NO_PARAMS};
+    use crate::{Connection, Result};
     use std::time::Duration;
     use time::OffsetDateTime;
 
-    fn checked_memory_handle() -> Connection {
-        let db = Connection::open_in_memory().unwrap();
-        db.execute_batch("CREATE TABLE foo (t TEXT, i INTEGER, f FLOAT)")
-            .unwrap();
-        db
+    fn checked_memory_handle() -> Result<Connection> {
+        let db = Connection::open_in_memory()?;
+        db.execute_batch("CREATE TABLE foo (t TEXT, i INTEGER, f FLOAT)")?;
+        Ok(db)
     }
 
     #[test]
-    fn test_offset_date_time() {
-        let db = checked_memory_handle();
+    fn test_offset_date_time() -> Result<()> {
+        let db = checked_memory_handle()?;
 
         let mut ts_vec = vec![];
 
@@ -60,23 +60,23 @@ mod test {
         ts_vec.push(make_datetime(10_000_000_000, 0)); //November 20, 2286
 
         for ts in ts_vec {
-            db.execute("INSERT INTO foo(t) VALUES (?)", &[&ts]).unwrap();
+            db.execute("INSERT INTO foo(t) VALUES (?)", &[&ts])?;
 
-            let from: OffsetDateTime = db
-                .query_row("SELECT t FROM foo", NO_PARAMS, |r| r.get(0))
-                .unwrap();
+            let from: OffsetDateTime = db.query_row("SELECT t FROM foo", [], |r| r.get(0))?;
 
-            db.execute("DELETE FROM foo", NO_PARAMS).unwrap();
+            db.execute("DELETE FROM foo", [])?;
 
             assert_eq!(from, ts);
         }
+        Ok(())
     }
 
     #[test]
-    fn test_sqlite_functions() {
-        let db = checked_memory_handle();
+    fn test_sqlite_functions() -> Result<()> {
+        let db = checked_memory_handle()?;
         let result: Result<OffsetDateTime> =
-            db.query_row("SELECT CURRENT_TIMESTAMP", NO_PARAMS, |r| r.get(0));
+            db.query_row("SELECT CURRENT_TIMESTAMP", [], |r| r.get(0));
         assert!(result.is_ok());
+        Ok(())
     }
 }
